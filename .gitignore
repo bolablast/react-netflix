@@ -22,4 +22,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-README.md
+추가한 기능
+
+-[] 슬라이더 양쪽 가능
+-[] tv show와 movie 구역 나누기(home에서는 tv show와 movie 다 나오게)
+-[] search 하면 각 구역에 맞게 제목 검색 가능
+-[] 각 파트에 추천 프로그램이 메인으로 뜨게(5초마다 변경, 애니메이션 적용)
