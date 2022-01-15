@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { getMovies, IGetMoviesResult } from "../api";
 import { AnimatePresence, motion, useViewportScroll } from "framer-motion";
 import { makeImagePath } from "../utils";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMatch, useNavigate } from "react-router";
 
 const Wrapper = styled.div`
@@ -17,14 +17,14 @@ const Loader = styled.div`
   align-items: center;
 `;
 
-const Banner = styled.div<{ bgPhoto: string }>`
+const Banner = styled(motion.div)<{ bgphoto: string }>`
   height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   padding: 60px;
   background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-    url(${(props) => props.bgPhoto});
+    url(${(props) => props.bgphoto});
   background-size: cover;
 `;
 
@@ -61,10 +61,10 @@ const Box = styled(motion.div)<{ bgphoto: string }>`
   background-position: center;
   position: relative;
   &:first-child {
-    transform-origin: center left;
+    transform-origin: center left !important;
   }
   &:last-child {
-    transform-origin: center right;
+    transform-origin: center right !important;
   }
 `;
 
@@ -128,6 +128,7 @@ const BigMovie = styled(motion.div)`
   border-radius: 50px;
   overflow: hidden;
   background-color: ${(props) => props.theme.black.lighter};
+  z-index: 102;
 `;
 
 const BigCover = styled.div`
@@ -180,28 +181,50 @@ const rowVariants = {
     x: 0,
   },
   exit: (isBack: boolean) => {
-    console.log(isBack);
     return {
       x: isBack ? window.innerWidth : -window.innerWidth,
     };
   },
   hidden: (isBack: boolean) => {
-    console.log(isBack);
     return {
       x: isBack ? -window.innerWidth : window.innerWidth,
     };
   },
 };
+
 function Home() {
   const [back, setBack] = useState(false);
   const navigate = useNavigate();
   const bigMovieMatch = useMatch("/movie/:movieId");
   const { scrollY } = useViewportScroll();
-  const onOverlayClick = () => navigate("/");
+  const [clickIndex, setClickIndex] = useState(-1);
+  const onOverlayClick = () => {
+    navigate("/");
+    setClickIndex(-1);
+  };
   const { data, isLoading } = useQuery<IGetMoviesResult>(
     ["movies", "nowPlaying"],
     getMovies
   );
+  const [sliderMouse, setSlierMouse] = useState(false);
+  const onMouseEnter = () => {
+    setSlierMouse(true);
+  };
+  const onMouseLeave = () => {
+    setSlierMouse(false);
+  };
+  console.log(sliderMouse);
+  const [mainData, setMainData] = useState() as any;
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setMainData(
+        data?.results[Math.floor(Math.random() * data?.results.length)]
+      );
+    }, 30000); // Time to change the screen.
+    setInterval(() => {
+      clearTimeout(timer);
+    }, 30000); // Time to change the screen.
+  }, [data, mainData]);
   const clickedMovie =
     bigMovieMatch?.params.movieId &&
     data?.results.find(
@@ -234,23 +257,44 @@ function Home() {
         <Loader>Loading...</Loader>
       ) : (
         <>
-          <Banner bgPhoto={makeImagePath(data?.results[0].backdrop_path || "")}>
-            <Title>{data?.results[0].title}</Title>
-            <Overview>{data?.results[0].overview}</Overview>
-          </Banner>
-          <Slider>
-            <SliderArrow
-              onClick={() => increaseIndex("left")}
-              style={{ left: "20px" }}
+          <AnimatePresence>
+            <Banner
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{
+                duration: 1,
+              }}
+              bgphoto={makeImagePath(
+                mainData
+                  ? mainData?.backdrop_path
+                  : data?.results[0].backdrop_path || ""
+              )}
             >
-              {"<"}
-            </SliderArrow>
+              <Title>
+                {mainData ? mainData?.title : data?.results[0].title}
+              </Title>
+              <Overview>
+                {mainData ? mainData?.overview : data?.results[0].overview}
+              </Overview>
+            </Banner>
+          </AnimatePresence>
+          <Slider onMouseLeave={onMouseLeave} onMouseEnter={onMouseEnter}>
+            {sliderMouse ? (
+              <SliderArrow
+                onClick={() => increaseIndex("right")}
+                style={{ left: "20px" }}
+              >
+                {"<"}
+              </SliderArrow>
+            ) : null}
             <AnimatePresence
               custom={back}
               initial={false}
               onExitComplete={toggleLeaving}
             >
               <Row
+                custom={back}
                 variants={rowVariants}
                 initial="hidden"
                 animate="visible"
@@ -261,32 +305,64 @@ function Home() {
                 {data?.results
                   .slice(1)
                   .slice(offset * index, offset * index + offset)
-                  .map((movie) => (
-                    <Box
-                      layoutId={movie.id + ""}
-                      variants={boxVariants}
-                      whileHover="hover"
-                      initial="normal"
-                      onClick={() => onBoxClicked(String(movie.id))}
-                      key={movie.id}
-                      transition={{
-                        type: "tween",
-                      }}
-                      bgphoto={makeImagePath(movie.backdrop_path, "w500")}
-                    >
-                      <Info variants={infoVariants}>
-                        <h4>{movie.title}</h4>
-                      </Info>
-                    </Box>
-                  ))}
+                  .map((movie, index) => {
+                    if (index === clickIndex) {
+                      return (
+                        <Box
+                          layoutId={movie.id + ""}
+                          variants={boxVariants}
+                          whileHover="hover"
+                          initial="normal"
+                          onClick={() => {
+                            onBoxClicked(String(movie.id));
+                            setClickIndex(index);
+                          }}
+                          key={movie.id}
+                          transition={{
+                            type: "tween",
+                          }}
+                          style={{ opacity: 0 }}
+                          bgphoto={makeImagePath(movie.backdrop_path, "w500")}
+                        >
+                          <Info variants={infoVariants}>
+                            <h4>{movie.title}</h4>
+                          </Info>
+                        </Box>
+                      );
+                    } else {
+                      return (
+                        <Box
+                          layoutId={movie.id + ""}
+                          variants={boxVariants}
+                          whileHover="hover"
+                          initial="normal"
+                          onClick={() => {
+                            onBoxClicked(String(movie.id));
+                            setClickIndex(index);
+                          }}
+                          key={movie.id}
+                          transition={{
+                            type: "tween",
+                          }}
+                          bgphoto={makeImagePath(movie.backdrop_path, "w500")}
+                        >
+                          <Info variants={infoVariants}>
+                            <h4>{movie.title}</h4>
+                          </Info>
+                        </Box>
+                      );
+                    }
+                  })}
               </Row>
             </AnimatePresence>
-            <SliderArrow
-              onClick={() => increaseIndex("right")}
-              style={{ right: "20px" }}
-            >
-              {">"}
-            </SliderArrow>
+            {sliderMouse ? (
+              <SliderArrow
+                onClick={() => increaseIndex("right")}
+                style={{ right: "20px" }}
+              >
+                {">"}
+              </SliderArrow>
+            ) : null}
           </Slider>
           <AnimatePresence>
             {bigMovieMatch ? (
@@ -297,7 +373,9 @@ function Home() {
                   animate={{ opacity: 1 }}
                 />
                 <BigMovie
-                  style={{ top: scrollY.get() + 100 }}
+                  style={{
+                    top: scrollY.get() + 100,
+                  }}
                   layoutId={bigMovieMatch.params.movieId}
                 >
                   {clickedMovie && (
