@@ -7,6 +7,7 @@ export interface IMovie {
   poster_path: string;
   title: string;
   overview: string;
+  popularity?: number;
 }
 
 export interface IGetMoviesResult {
@@ -22,6 +23,12 @@ export interface IGetMoviesResult {
 
 export function getMovies() {
   return fetch(`${BASE_PATH}/movie/now_playing?api_key=${API_KEY}`).then(
+    (response) => response.json()
+  );
+}
+
+export function getPopularMovies() {
+  return fetch(`${BASE_PATH}/movie/popular?api_key=${API_KEY}`).then(
     (response) => response.json()
   );
 }

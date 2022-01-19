@@ -6,7 +6,7 @@ import Tv from "./Routes/Tv";
 
 function App() {
   return (
-    <Router>
+    <Router basename="/react-netflix">
       <Header />
       <Routes>
         <Route path="/" element={<Home />} />
